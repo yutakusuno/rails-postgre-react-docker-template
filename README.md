@@ -11,7 +11,7 @@ git clone git@github.com:yutakusuno/rails-postgre-docker-template.git
 cd rails-postgre-docker-template
 ```
 
-Start the Docker containers:
+Boot the application:
 
 ```
 docker compose up -d
@@ -20,7 +20,15 @@ docker compose up -d
 Create the database:
 
 ```
-docker-compose run --rm backend bundle exec rake db:create
+docker compose run --rm backend bundle exec rake db:create
+```
+
+After following these steps, you can access the frontend server at http://localhost:5173/ and the backend server at http://localhost:3000/.
+
+Stop the application:
+
+```
+docker compose down
 ```
 
 ## Setup from scratch
@@ -209,10 +217,16 @@ docker compose up -d
 Create the database:
 
 ```
-docker-compose run --rm backend bundle exec rake db:create
+docker compose run --rm backend bundle exec rake db:create
 ```
 
 After following these steps, you can access the frontend server at http://localhost:5173/ and the backend server at http://localhost:3000/.
+
+Stop the application:
+
+```
+docker compose down
+```
 
 ## TDR
 
