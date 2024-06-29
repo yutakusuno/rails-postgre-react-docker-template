@@ -14,13 +14,13 @@ cd rails-postgre-docker-template
 Boot the application:
 
 ```
-docker compose up -d
+docker compose -f compose.dev.yaml up -d
 ```
 
 Create the database:
 
 ```
-docker compose run --rm backend bundle exec rake db:create
+docker compose -f compose.dev.yaml exec backend bundle exec rake db:create
 ```
 
 After following these steps, you can access the frontend server at http://localhost:5173/ and the backend server at http://localhost:3000/.
@@ -28,7 +28,7 @@ After following these steps, you can access the frontend server at http://localh
 Stop the application:
 
 ```
-docker compose down
+docker compose -f compose.dev.yaml down
 ```
 
 ## Setup from scratch
@@ -49,7 +49,7 @@ Set up the frontend:
 
 ```
 cd frontend
-npm create vite@latest .
+pnpm create vite@latest .
 ```
 
 Update `frontend/vite.config.ts`:
@@ -65,23 +65,28 @@ Add the frontend server host to run on Docker.
   });
 ```
 
-Create a Dockerfile:
+Create a Dockerfile.dev:
 
 ```
-touch Dockerfile
+touch Dockerfile.dev
 ```
 
-Update frontend/Dockerfile:
+Update frontend/Dockerfile.dev:
 
 ```dockerfile
 # syntax=docker/dockerfile:1
 FROM node:22-alpine3.19
+
+RUN npm install -g pnpm
+
 WORKDIR /app
 COPY package*.json ./
 COPY . .
-RUN npm install
+
+RUN pnpm install
+
 EXPOSE 5173
-CMD ["npm", "run", "dev"]
+CMD ["pnpm", "run", "dev"]
 ```
 
 ### Backend
@@ -90,21 +95,35 @@ Set up the backend:
 
 ```
 cd backend
-touch Dockerfile
+touch Dockerfile.dev
 ```
 
-Update backend/Dockerfile:
+Update backend/Dockerfile.dev:
 
 ```dockerfile
-# syntax=docker/dockerfile:1
-FROM ruby:3.3.2
-RUN apt-get update -qq && apt-get install -y postgresql-client
+# syntax = docker/dockerfile:1
+
+# Make sure RUBY_VERSION matches the Ruby version in .ruby-version and Gemfile
+ARG RUBY_VERSION=3.3.2
+FROM registry.docker.com/library/ruby:$RUBY_VERSION-slim
+
+# Rails app lives here
 WORKDIR /app
+
+# Install packages needed to build gems
+RUN apt-get update -qq && \
+  apt-get install --no-install-recommends -y build-essential git libpq-dev libvips pkg-config
+
+# Install application gems
 COPY Gemfile Gemfile.lock ./
-COPY . .
 RUN bundle install
+
+# Copy application code
+COPY . .
+
+# Start the server by default, this can be overwritten at runtime
 EXPOSE 3000
-CMD ["rails", "server", "-b", "0.0.0.0"]
+CMD ["./bin/rails", "server"]
 ```
 
 Create a Gemfile and Gemfile.lock:
@@ -123,11 +142,11 @@ gem 'rails', '~>7'
 Leave Gemfile.lock empty. Then, create a `compose.yaml` file at the project root directory:
 
 ```
-cd ../
-touch compose.yaml
+cd ..
+touch compose.dev.yaml
 ```
 
-then, update the `compose.yaml`
+then, update the `compose.dev.yaml`
 
 ```yaml
 services:
@@ -139,7 +158,9 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
     command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -p 3000 -b '0.0.0.0'"
     volumes:
       - ./backend:/app
@@ -148,42 +169,31 @@ services:
     depends_on:
       - db
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
     volumes:
       - ./frontend:/app
     ports:
       - '5173:5173'
-    depends_on:
-      - backend
 ```
 
 Install frontend dependencies:
 
 ```
-docker compose run --rm frontend npm i
+docker compose -f compose.dev.yaml run --rm frontend pnpm i
 ```
 
 Create a new Rails application with an api mode:
 
 ```
-docker compose run --rm --no-deps backend rails new . --api --force --database=postgresql
-```
-
-Update backend/Dockerfile:
-
-```diff dockerfile
-+ ENV RAILS_ENV="development" \
-- ENV RAILS_ENV="production" \
-    BUNDLE_DEPLOYMENT="1" \
-    BUNDLE_PATH="/usr/local/bundle" \
--   BUNDLE_WITHOUT="development"
-+   BUNDLE_WITHOUT="production"
+docker compose -f compose.dev.yaml run --rm --no-deps backend rails new . --api --force --database=postgresql
 ```
 
 Build the Docker images:
 
 ```
-docker compose build
+docker compose -f compose.dev.yaml build
 ```
 
 Update `config/database.yml`:
@@ -211,13 +221,13 @@ Specify the db container.
 Boot the app:
 
 ```
-docker compose up -d
+docker compose -f compose.dev.yaml up -d
 ```
 
 Create the database:
 
 ```
-docker compose run --rm backend bundle exec rake db:create
+docker compose -f compose.dev.yaml exec backend bundle exec rake db:create
 ```
 
 After following these steps, you can access the frontend server at http://localhost:5173/ and the backend server at http://localhost:3000/.
@@ -225,7 +235,7 @@ After following these steps, you can access the frontend server at http://localh
 Stop the application:
 
 ```
-docker compose down
+docker compose -f compose.dev.yaml down
 ```
 
 ## TDR
