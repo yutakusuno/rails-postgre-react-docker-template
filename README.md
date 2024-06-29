@@ -75,7 +75,7 @@ Update frontend/Dockerfile.dev:
 
 ```dockerfile
 # syntax=docker/dockerfile:1
-FROM node:22-alpine3.19
+FROM node:22-alpine
 
 RUN npm install -g pnpm
 
@@ -104,7 +104,7 @@ Update backend/Dockerfile.dev:
 # syntax = docker/dockerfile:1
 
 # Make sure RUBY_VERSION matches the Ruby version in .ruby-version and Gemfile
-ARG RUBY_VERSION=3.3.2
+ARG RUBY_VERSION=3.3.3
 FROM registry.docker.com/library/ruby:$RUBY_VERSION-slim
 
 # Rails app lives here
@@ -139,7 +139,7 @@ source 'https://rubygems.org'
 gem 'rails', '~>7'
 ```
 
-Leave Gemfile.lock empty. Then, create a `compose.yaml` file at the project root directory:
+Leave Gemfile.lock empty. Then, create a `compose.dev.yaml` file at the project root directory:
 
 ```
 cd ..
@@ -151,7 +151,7 @@ then, update the `compose.dev.yaml`
 ```yaml
 services:
   db:
-    image: postgres:16.3-alpine3.20
+    image: postgres:16.3-alpine
     volumes:
       - ./backend/tmp/db:/var/lib/postgresql/data
     environment:
@@ -160,7 +160,7 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile.dev
+      dockerfile: ./Dockerfile.dev
     command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -p 3000 -b '0.0.0.0'"
     volumes:
       - ./backend:/app
@@ -171,7 +171,7 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile.dev
+      dockerfile: ./Dockerfile.dev
     volumes:
       - ./frontend:/app
     ports:
